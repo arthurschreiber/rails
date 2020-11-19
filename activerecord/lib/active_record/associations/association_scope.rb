@@ -40,6 +40,10 @@ module ActiveRecord
           binds << owner.class.polymorphic_name
         end
 
+        if last_reflection.klass.sharding_key && last_reflection.sharding_key
+          binds << owner[last_reflection.sharding_key]
+        end
+
         chain.each_cons(2).each do |reflection, next_reflection|
           if reflection.type
             binds << next_reflection.klass.polymorphic_name
@@ -68,6 +72,11 @@ module ActiveRecord
             scope = apply_scope(scope, table, reflection.type, polymorphic_type)
           end
 
+          if reflection.klass.sharding_key && reflection.sharding_key
+            value = transform_value(owner[reflection.sharding_key])
+            scope = apply_scope(scope, table, reflection.klass.sharding_key, value)
+          end
+
           scope
         end
 
@@ -86,6 +95,10 @@ module ActiveRecord
           if reflection.type
             value = transform_value(next_reflection.klass.polymorphic_name)
             scope = apply_scope(scope, table, reflection.type, value)
+          end
+
+          if reflection.klass.sharding_key && reflection.sharding_key
+            constraint = constraint.and(table[reflection.klass.sharding_key].eq(foreign_table[reflection.sharding_key]))
           end
 
           scope.joins!(join(foreign_table, constraint))

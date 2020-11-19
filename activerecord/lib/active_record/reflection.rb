@@ -432,14 +432,14 @@ module ActiveRecord
         end
       end
 
-      attr_reader :type, :foreign_type
+      attr_reader :type, :foreign_type, :sharding_key
       attr_accessor :parent_reflection # Reflection
 
       def initialize(name, scope, options, active_record)
         super
         @type = -(options[:foreign_type]&.to_s || "#{options[:as]}_type") if options[:as]
         @foreign_type = -(options[:foreign_type]&.to_s || "#{name}_type") if options[:polymorphic]
-
+        @sharding_key = -options[:sharding_key].to_s if options[:sharding_key]
         ensure_option_not_given_as_class!(:class_name)
       end
 
@@ -1050,6 +1050,10 @@ module ActiveRecord
 
       def join_primary_key(klass = self.klass)
         @reflection.join_primary_key(klass)
+      end
+
+      def sharding_key
+        @reflection.sharding_key
       end
 
       def all_includes; yield; end

@@ -122,6 +122,8 @@ module ActiveRecord
             @attributes_builder = nil
           end
 
+          attr_accessor :sharding_key
+
           private
             def suppress_composite_primary_key(pk)
               return pk unless pk.is_a?(Array)

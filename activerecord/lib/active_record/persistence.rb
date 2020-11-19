@@ -699,10 +699,14 @@ module ActiveRecord
         verify_readonly_attribute(name) || name
       end
 
-      update_constraints = _primary_key_constraints_hash
       attributes = attributes.each_with_object({}) do |(k, v), h|
         h[k] = @attributes.write_cast_value(k, v)
         clear_attribute_change(k)
+      end
+
+      update_constraints = _primary_key_constraints_hash
+      if sharding_key = self.class.sharding_key
+        update_constraints[sharding_key] = attribute_in_database(sharding_key)
       end
 
       affected_rows = self.class._update_record(
@@ -926,7 +930,13 @@ module ActiveRecord
     end
 
     def _delete_row
-      self.class._delete_record(_primary_key_constraints_hash)
+      constraints = _primary_key_constraints_hash
+
+      if sharding_key = self.class.sharding_key
+        constraints[sharding_key] = attribute_in_database(sharding_key)
+      end
+
+      self.class._delete_record(constraints)
     end
 
     def _touch_row(attribute_names, time)
@@ -940,10 +950,13 @@ module ActiveRecord
     end
 
     def _update_row(attribute_names, attempted_action = "update")
-      self.class._update_record(
-        attributes_with_values(attribute_names),
-        _primary_key_constraints_hash
-      )
+      constraints = _primary_key_constraints_hash
+
+      if sharding_key = self.class.sharding_key
+        constraints[sharding_key] = attribute_in_database(sharding_key)
+      end
+
+      self.class._update_record(attributes_with_values(attribute_names), constraints)
     end
 
     def create_or_update(**, &block)
