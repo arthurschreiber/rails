@@ -233,6 +233,10 @@ module ActiveRecord
               scope.where!(reflection.type => model.polymorphic_name)
             end
 
+            if reflection.klass.sharding_key && reflection.sharding_key
+              scope.where!(reflection.klass.sharding_key => sharding_key_value)
+            end
+
             scope.merge!(reflection_scope) unless reflection_scope.empty_scope?
 
             if preload_scope && !preload_scope.empty_scope?
