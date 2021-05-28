@@ -905,11 +905,12 @@ module ActiveRecord
     end
 
     def _find_record(options)
-      if options && options[:lock]
-        self.class.preload(strict_loaded_associations).lock(options[:lock]).find(id)
-      else
-        self.class.preload(strict_loaded_associations).find(id)
+      scope = self.class.preload(strict_loaded_associations)
+      scope = scope.lock(options[:lock]) if options && options[:lock]
+      if sharding_key = self.class.sharding_key
+        scope = scope.where(self.class.sharding_key => attribute_in_database(sharding_key))
       end
+      scope.find(id)
     end
 
     def apply_scoping?(options)
