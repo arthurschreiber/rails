@@ -234,7 +234,7 @@ module ActiveRecord
             end
 
             if reflection.klass.sharding_key && reflection.sharding_key
-              scope.where!(reflection.klass.sharding_key => sharding_key_value)
+              scope.where!(reflection.klass.sharding_key => model[reflection.sharding_key])
             end
 
             scope.merge!(reflection_scope) unless reflection_scope.empty_scope?
