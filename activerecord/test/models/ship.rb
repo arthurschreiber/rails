@@ -9,6 +9,10 @@ class Ship < ActiveRecord::Base
   has_many :parts, class_name: "ShipPart"
   has_many :treasures
 
+  has_many :cannons,
+    foreign_key: [:pirate_id, :ship_id],
+    primary_key: [:pirate_id, :id]
+
   accepts_nested_attributes_for :parts, allow_destroy: true
   accepts_nested_attributes_for :pirate, allow_destroy: true, reject_if: proc(&:empty?)
   accepts_nested_attributes_for :update_only_pirate, update_only: true

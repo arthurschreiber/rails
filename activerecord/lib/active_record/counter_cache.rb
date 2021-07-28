@@ -177,8 +177,8 @@ module ActiveRecord
 
         if affected_rows > 0
           each_counter_cached_associations do |association|
-            foreign_key = association.reflection.foreign_key.to_sym
-            unless destroyed_by_association && destroyed_by_association.foreign_key.to_sym == foreign_key
+            foreign_key = association.reflection.foreign_key.map(&:to_sym)
+            unless destroyed_by_association && destroyed_by_association.foreign_key.map(&:to_sym) == foreign_key
               association.decrement_counters
             end
           end

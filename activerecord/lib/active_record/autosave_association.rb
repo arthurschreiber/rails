@@ -269,6 +269,7 @@ module ActiveRecord
     # Returns whether or not this record has been changed in any way (including whether
     # any of its nested autosave associations are likewise changed)
     def changed_for_autosave?
+
       new_record? || has_changes_to_save? || marked_for_destruction? || nested_records_changed_for_autosave?
     end
 
@@ -442,11 +443,14 @@ module ActiveRecord
           if autosave && record.marked_for_destruction?
             record.destroy
           elsif autosave != false
-            key = reflection.options[:primary_key] ? public_send(reflection.options[:primary_key]) : id
+            key = reflection.options[:primary_key] ? Array(reflection.options[:primary_key]).map { |primary_key_part| public_send(primary_key_part) } : [id]
 
             if (autosave && record.changed_for_autosave?) || record_changed?(reflection, record, key)
               unless reflection.through_reflection
-                record[reflection.foreign_key] = key
+                key.zip(reflection.foreign_key) do |primary_key_part, foreign_key_part|
+                  record[foreign_key_part] = primary_key_part
+                end
+
                 if inverse_reflection = reflection.inverse_of
                   record.association(inverse_reflection.name).inversed_from(self)
                 end
@@ -485,14 +489,21 @@ module ActiveRecord
           autosave = reflection.options[:autosave]
 
           if autosave && record.marked_for_destruction?
-            self[reflection.foreign_key] = nil
+            reflection.foreign_key.each do |foreign_key_part|
+              self[foreign_key_part] = nil
+            end
             record.destroy
           elsif autosave != false
             saved = record.save(validate: !autosave) if record.new_record? || (autosave && record.changed_for_autosave?)
 
             if association.updated?
-              association_id = record.public_send(reflection.options[:primary_key] || :id)
-              self[reflection.foreign_key] = association_id
+              primary_key = reflection.options[:primary_key] ? Array(reflection.options[:primary_key]) : [:id]
+              foreign_key = reflection.foreign_key
+
+              primary_key.zip(foreign_key) do |primary_key_part, foreign_key_part|
+                self[foreign_key_part] = record.public_send(primary_key_part)
+              end
+
               association.loaded!
             end
 

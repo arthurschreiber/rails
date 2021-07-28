@@ -60,23 +60,23 @@ module ActiveRecord
           model_was = klass
         end
 
-        foreign_key_was = owner.attribute_before_last_save(reflection.foreign_key)
+        foreign_key_values_was = reflection.foreign_key.map { |foreign_key_part| owner.attribute_before_last_save(foreign_key_part) }
 
-        if foreign_key_was && model_was < ActiveRecord::Base
-          update_counters_via_scope(model_was, foreign_key_was, -1)
+        if foreign_key_values_was.all? && model_was < ActiveRecord::Base
+          update_counters_via_scope(model_was, foreign_key_values_was, -1)
         end
       end
 
       def target_changed?
-        owner.attribute_changed?(reflection.foreign_key) || (!foreign_key_present? && target&.new_record?)
+        reflection.foreign_key.any? { |foreign_key_part| owner.attribute_changed?(foreign_key_part) } || (!foreign_key_present? && target&.new_record?)
       end
 
       def target_previously_changed?
-        owner.attribute_previously_changed?(reflection.foreign_key)
+        reflection.foreign_key.any? { |foreign_key_part| owner.attribute_previously_changed?(foreign_key_part) }
       end
 
       def saved_change_to_target?
-        owner.saved_change_to_attribute?(reflection.foreign_key)
+        reflection.foreign_key.any? { |foreign_key_part| owner.saved_change_to_attribute?(foreign_key_part) }
       end
 
       private
@@ -99,13 +99,14 @@ module ActiveRecord
             if target && !stale_target?
               target.increment!(reflection.counter_cache_column, by, touch: reflection.options[:touch])
             else
-              update_counters_via_scope(klass, owner._read_attribute(reflection.foreign_key), by)
+              foreign_key_values = reflection.foreign_key.map { |foreign_key_part| owner._read_attribute(foreign_key_part) }
+              update_counters_via_scope(klass, foreign_key_values, by)
             end
           end
         end
 
-        def update_counters_via_scope(klass, foreign_key, by)
-          scope = klass.unscoped.where!(primary_key(klass) => foreign_key)
+        def update_counters_via_scope(klass, foreign_key_values, by)
+          scope = klass.unscoped.where!(primary_key(klass).zip(foreign_key_values).to_h)
           scope.update_counters(reflection.counter_cache_column => by, touch: reflection.options[:touch])
         end
 
@@ -118,10 +119,20 @@ module ActiveRecord
         end
 
         def replace_keys(record, force: false)
-          target_key = record ? record._read_attribute(primary_key(record.class)) : nil
+          if record
+            primary_key(record.class).zip(reflection.foreign_key) do |primary_key_part, foreign_key_part|
+              target_key_part = record._read_attribute(primary_key_part)
 
-          if force || owner._read_attribute(reflection.foreign_key) != target_key
-            owner[reflection.foreign_key] = target_key
+              if force || owner._read_attribute(foreign_key_part) != target_key_part
+                owner[foreign_key_part] = target_key_part
+              end
+            end
+          else
+            reflection.foreign_key.each do |foreign_key_part|
+              if force || owner._read_attribute(foreign_key_part) != nil
+                owner[foreign_key_part] = nil
+              end
+            end
           end
         end
 
@@ -130,7 +141,7 @@ module ActiveRecord
         end
 
         def foreign_key_present?
-          owner._read_attribute(reflection.foreign_key)
+          reflection.foreign_key.all? { |foreign_key_part| owner._read_attribute(foreign_key_part) }
         end
 
         def invertible_for?(record)
@@ -139,8 +150,12 @@ module ActiveRecord
         end
 
         def stale_state
-          result = owner._read_attribute(reflection.foreign_key) { |n| owner.send(:missing_attribute, n, caller) }
-          result && result.to_s
+          results = reflection.foreign_key.map do |foreign_key_part|
+            result = owner._read_attribute(foreign_key_part) { |n| owner.send(:missing_attribute, n, caller) }
+            result && result.to_s
+          end
+
+          results.all?(&:nil?) ? nil : results
         end
     end
   end

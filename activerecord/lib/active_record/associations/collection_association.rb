@@ -48,28 +48,39 @@ module ActiveRecord
       # Implements the ids reader method, e.g. foo.item_ids for Foo.has_many :items
       def ids_reader
         if loaded?
-          target.pluck(reflection.association_primary_key)
+          target.pluck(*reflection.association_primary_key)
         elsif !target.empty?
-          load_target.pluck(reflection.association_primary_key)
+          load_target.pluck(*reflection.association_primary_key)
         else
-          @association_ids ||= scope.pluck(reflection.association_primary_key)
+          @association_ids ||= scope.pluck(*reflection.association_primary_key)
         end
       end
 
       # Implements the ids writer method, e.g. foo.item_ids= for Foo.has_many :items
       def ids_writer(ids)
         primary_key = reflection.association_primary_key
-        pk_type = klass.type_for_attribute(primary_key)
-        ids = Array(ids).compact_blank
-        ids.map! { |i| pk_type.cast(i) }
+        pk_types = primary_key.map { |primary_key_part| klass.type_for_attribute(primary_key_part) }
 
-        records = klass.where(primary_key => ids).index_by do |r|
-          r.public_send(primary_key)
+        ids = Array(ids).compact_blank
+        ids.map! { |id_or_parts| pk_types.zip(Array(id_or_parts)).map { |type, id_part| type.cast(id_part) } }
+
+        records = if primary_key.length == 1
+          klass.where(primary_key.first => ids.map(&:first))
+        else
+          ids.inject(klass.none) do |scope, id_parts|
+            scope.or(klass.where(primary_key.zip(id_parts).map { |primary_key_part, value| [primary_key_part, value] }.to_h))
+          end
+        end
+
+        records = records.index_by do |r|
+          primary_key.map { |primary_key_part| r.public_send(primary_key_part) }
         end.values_at(*ids).compact
 
         if records.size != ids.size
-          found_ids = records.map { |record| record.public_send(primary_key) }
+          found_ids = records.map { |record| primary_key.map { |primary_key_part| r.public_send(primary_key_part) } }
           not_found_ids = ids - found_ids
+
+          # TODO update raise_record_not_found_exception to handle composite ids / primary keys
           klass.all.raise_record_not_found_exception!(ids, records.size, ids.size, primary_key, not_found_ids)
         else
           replace(records)

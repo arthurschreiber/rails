@@ -955,6 +955,11 @@ ActiveRecord::Schema.define do
     t.integer :discount_id
   end
 
+  create_table :cannons, force: true do |t|
+    t.belongs_to :pirate
+    t.belongs_to :ship
+  end
+
   create_table :ships, force: true do |t|
     t.string :name
     t.integer :pirate_id

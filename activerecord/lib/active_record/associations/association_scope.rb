@@ -35,7 +35,8 @@ module ActiveRecord
         binds = []
         last_reflection = chain.last
 
-        binds << last_reflection.join_id_for(owner)
+        binds.concat(last_reflection.join_id_for(owner))
+
         if last_reflection.type
           binds << owner.class.polymorphic_name
         end
@@ -60,8 +61,11 @@ module ActiveRecord
           foreign_key = reflection.join_foreign_key
 
           table = reflection.aliased_table
-          value = transform_value(owner[foreign_key])
-          scope = apply_scope(scope, table, primary_key, value)
+
+          primary_key.zip(foreign_key) do |primary_key_part, foreign_key_part|
+            value = transform_value(owner[foreign_key_part])
+            scope = apply_scope(scope, table, primary_key_part, value)
+          end
 
           if reflection.type
             polymorphic_type = transform_value(owner.class.polymorphic_name)
@@ -81,14 +85,17 @@ module ActiveRecord
 
           table = reflection.aliased_table
           foreign_table = next_reflection.aliased_table
-          constraint = table[primary_key].eq(foreign_table[foreign_key])
+
+          constraints = primary_key.zip(foreign_key).map do |primary_key_part, foreign_key_part|
+            table[primary_key_part].eq(foreign_table[foreign_key_part])
+          end
 
           if reflection.type
             value = transform_value(next_reflection.klass.polymorphic_name)
             scope = apply_scope(scope, table, reflection.type, value)
           end
 
-          scope.joins!(join(foreign_table, constraint))
+          scope.joins!(join(foreign_table, constraints))
         end
 
         class ReflectionProxy < SimpleDelegator # :nodoc:

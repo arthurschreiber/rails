@@ -102,6 +102,8 @@ module ActiveRecord
         end
 
         def delete_count(method, scope)
+
+
           if method == :delete_all
             scope.delete_all
           else

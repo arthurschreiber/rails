@@ -32,6 +32,7 @@ require "models/college"
 require "models/student"
 require "models/pirate"
 require "models/ship"
+require "models/cannon"
 require "models/ship_part"
 require "models/treasure"
 require "models/parrot"
@@ -176,6 +177,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     Student.create(active: true, college_id: college.id, name: "Sarah")
 
     assert_equal college.students, Student.where(active: true, college_id: college.id)
+  end
+
+  def test_supports_composite_keys
+    pirate = Pirate.create(catchphrase: "Don' botharrr talkin' like one, savvy?")
+    ship = pirate.create_ship(name: "Nights Dirty Lightning")
+
+    ship.cannons.create
   end
 
   def test_add_record_to_collection_should_change_its_updated_at
@@ -2734,6 +2742,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_equal [bulb1], car.bulbs
     assert_equal [bulb1, bulb2], car.all_bulbs.sort_by(&:id)
+
     assert_equal [bulb1, bulb2], Car.includes(:all_bulbs).find(car.id).all_bulbs.sort_by(&:id)
     assert_equal [bulb1, bulb2], Car.eager_load(:all_bulbs).find(car.id).all_bulbs.sort_by(&:id)
   end

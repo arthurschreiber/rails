@@ -55,12 +55,14 @@ module ActiveRecord
 
           association_primary_key = source_reflection.association_primary_key(reflection.klass)
 
-          if association_primary_key == reflection.klass.primary_key && !options[:source_type]
-            join_attributes = { source_reflection.name => records }
+          join_attributes = {}
+
+          if association_primary_key == [reflection.klass.primary_key] && !options[:source_type]
+            join_attributes[source_reflection.name] = records
           else
-            join_attributes = {
-              source_reflection.foreign_key => records.map(&association_primary_key.to_sym)
-            }
+            source_reflection.foreign_key.zip(association_primary_key) do |foreign_key_part, primary_key_part|
+              join_attributes[foreign_key_part] = records.map(&primary_key_part.to_sym)
+            end
           end
 
           if options[:source_type]

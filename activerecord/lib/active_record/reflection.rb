@@ -185,7 +185,9 @@ module ActiveRecord
         primary_key = join_primary_key
         foreign_key = join_foreign_key
 
-        klass_scope.where!(table[primary_key].eq(foreign_table[foreign_key]))
+        primary_key.zip(foreign_key) do |primary_key_part, foreign_key_part|
+          klass_scope.where!(table[primary_key_part].eq(foreign_table[foreign_key_part]))
+        end
 
         if klass.finder_needs_type_condition?
           klass_scope.where!(klass.send(:type_condition, table))
@@ -304,7 +306,7 @@ module ActiveRecord
         end
 
         def primary_key(klass)
-          klass.primary_key || raise(UnknownPrimaryKey.new(klass))
+          Array(klass.primary_key) || raise(UnknownPrimaryKey.new(klass))
         end
 
         def ensure_option_not_given_as_class!(option_name)
@@ -456,7 +458,7 @@ module ActiveRecord
       end
 
       def foreign_key
-        @foreign_key ||= -(options[:foreign_key]&.to_s || derive_foreign_key)
+        @foreign_key ||= options[:foreign_key] ? Array(options[:foreign_key]).map { |part| -part.to_s } : [derive_foreign_key]
       end
 
       def association_foreign_key
@@ -468,7 +470,7 @@ module ActiveRecord
       end
 
       def active_record_primary_key
-        @active_record_primary_key ||= -(options[:primary_key]&.to_s || primary_key(active_record))
+        @active_record_primary_key ||= options[:primary_key] ? Array(options[:primary_key]).map { |part| -part.to_s } : primary_key(active_record)
       end
 
       def join_primary_key(klass = nil)
@@ -496,7 +498,7 @@ module ActiveRecord
       end
 
       def join_id_for(owner) # :nodoc:
-        owner[join_foreign_key]
+        join_foreign_key.map { |foreign_key_part| owner[foreign_key_part] }
       end
 
       def through_reflection
@@ -717,7 +719,7 @@ module ActiveRecord
       # klass option is necessary to support loading polymorphic associations
       def association_primary_key(klass = nil)
         if primary_key = options[:primary_key]
-          @association_primary_key ||= -primary_key.to_s
+          @association_primary_key ||= Array(primary_key).map { |part| -part.to_s }
         else
           primary_key(klass || self.klass)
         end
@@ -863,7 +865,7 @@ module ActiveRecord
         # Get the "actual" source reflection if the immediate source reflection has a
         # source reflection itself
         if primary_key = actual_source_reflection.options[:primary_key]
-          @association_primary_key ||= -primary_key.to_s
+          @association_primary_key ||= Array(primary_key).map { |part| -part.to_s }
         else
           primary_key(klass || self.klass)
         end

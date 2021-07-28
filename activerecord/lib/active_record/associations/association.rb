@@ -198,7 +198,7 @@ module ActiveRecord
 
       def initialize_attributes(record, except_from_scope_attributes = nil) #:nodoc:
         except_from_scope_attributes ||= {}
-        skip_assign = [reflection.foreign_key, reflection.type].compact
+        skip_assign = [*reflection.foreign_key, reflection.type].compact
         assigned_keys = record.changed_attribute_names_to_save
         assigned_keys += except_from_scope_attributes.keys.map(&:to_s)
         attributes = scope_for_create.except!(*(assigned_keys - skip_assign))
@@ -235,6 +235,7 @@ module ActiveRecord
           end
 
           binds = AssociationScope.get_bind_values(owner, reflection.chain)
+
           sc.execute(binds, klass.connection) do |record|
             set_inverse_instance(record)
             if owner.strict_loading_n_plus_one_only? && reflection.macro == :has_many
@@ -328,7 +329,7 @@ module ActiveRecord
 
         # Returns true if record contains the foreign_key
         def foreign_key_for?(record)
-          record._has_attribute?(reflection.foreign_key)
+          reflection.foreign_key.all? { |foreign_key_part| record._has_attribute?(foreign_key_part) }
         end
 
         # This should be implemented to return the values of the relevant key(s) on the owner,
@@ -369,10 +370,16 @@ module ActiveRecord
 
         def matches_foreign_key?(record)
           if foreign_key_for?(record)
-            record.read_attribute(reflection.foreign_key) == owner.id ||
-              (foreign_key_for?(owner) && owner.read_attribute(reflection.foreign_key) == record.id)
+            matches_foreign_key_values?(owner, record) ||
+              (foreign_key_for?(owner) && matches_foreign_key_values?(record, owner))
           else
-            owner.read_attribute(reflection.foreign_key) == record.id
+            matches_foreign_key_values?(record, owner)
+          end
+        end
+
+        def matches_foreign_key_values?(record, other)
+          reflection.foreign_key.zip(reflection.active_record_primary_key).all? do |foreign_key_part, primary_key_part|
+            other.read_attribute(foreign_key_part) == record.read_attribute(primary_key_part)
           end
         end
     end

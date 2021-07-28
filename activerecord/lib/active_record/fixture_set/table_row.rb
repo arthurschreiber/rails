@@ -116,7 +116,8 @@ module ActiveRecord
             case association.macro
             when :belongs_to
               # Do not replace association name with association foreign key if they are named the same
-              fk_name = association.join_foreign_key
+
+              fk_name = association.join_foreign_key.first # TODO
 
               if association.name.to_s != fk_name && value = @row.delete(association.name.to_s)
                 if association.polymorphic? && value.sub!(/\s*\(([^)]*)\)\s*$/, "")
@@ -145,11 +146,18 @@ module ActiveRecord
 
             targets = targets.is_a?(Array) ? targets : targets.split(/\s*,\s*/)
             joins   = targets.map do |target|
-              join = { lhs_key => @row[model_metadata.primary_key_name],
-                       rhs_key => ActiveRecord::FixtureSet.identify(target, column_type) }
+              join = {}
+
+              # TODO
+              lhs_key.zip(rhs_key) do |lhs, rhs|
+                join[lhs] = @row[model_metadata.primary_key_name]
+                join[rhs] = ActiveRecord::FixtureSet.identify(target, column_type)
+              end
+
               association.timestamp_column_names.each do |col|
                 join[col] = @now
               end
+
               join
             end
             @table_rows.tables[table_name].concat(joins)
