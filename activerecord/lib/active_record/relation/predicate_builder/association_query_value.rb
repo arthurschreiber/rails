@@ -9,7 +9,7 @@ module ActiveRecord
       end
 
       def queries
-        [ associated_table.join_foreign_key => ids ]
+        [ associated_table.join_foreign_key => [ids] ]
       end
 
       private
@@ -31,10 +31,10 @@ module ActiveRecord
         end
 
         def convert_to_id(value)
-          if value.respond_to?(primary_key)
-            value.public_send(primary_key)
+          if primary_key.all? { |primary_key_part| value.respond_to?(primary_key_part) }
+            primary_key.map { |primary_key_part| value.public_send(primary_key_part) }
           else
-            value
+            [ value ]
           end
         end
     end

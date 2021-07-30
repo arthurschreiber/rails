@@ -51,7 +51,15 @@ module ActiveRecord
     end
 
     def [](attr_name, value, operator = nil)
-      build(table.arel_table[attr_name], value, operator)
+      if attr_name.is_a?(Array)
+        value.map { |value_parts|
+          attr_name.zip(value_parts).map { |attr_name_part, value_part|
+            build(table.arel_table[attr_name_part], value_part, operator)
+          }.reduce(&:and)
+        }.reduce(&:or)
+      else
+        build(table.arel_table[attr_name], value, operator)
+      end
     end
 
     def build(attribute, value, operator = nil)
@@ -77,6 +85,10 @@ module ActiveRecord
         return ["1=0"] if attributes.empty?
 
         attributes.flat_map do |key, value|
+          if key.is_a?(Array)
+            next self[key, value]
+          end
+
           if value.is_a?(Hash) && !table.has_column?(key)
             table.associated_table(key, &block)
               .predicate_builder.expand_from_hash(value.stringify_keys)
@@ -88,11 +100,11 @@ module ActiveRecord
             # PriceEstimate.where(estimate_of: treasure)
             associated_table = table.associated_table(key)
             if associated_table.polymorphic_association?
-              value = [value] unless value.is_a?(Array)
+              value = [value] # unless value.is_a?(Array)
               klass = PolymorphicArrayValue
             elsif associated_table.through_association?
               next associated_table.predicate_builder.expand_from_hash(
-                associated_table.primary_key => value
+                associated_table.primary_key => [value]
               )
             end
 

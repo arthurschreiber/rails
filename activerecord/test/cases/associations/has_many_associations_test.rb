@@ -42,6 +42,8 @@ require "models/subscription"
 require "models/zine"
 require "models/interest"
 
+require "byebug"
+
 class HasManyAssociationsTestForReorderWithJoinDependency < ActiveRecord::TestCase
   fixtures :authors, :author_addresses, :posts, :comments
 

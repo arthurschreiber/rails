@@ -9,7 +9,7 @@ module ActiveRecord
       end
 
       def queries
-        return [ associated_table.join_foreign_key => values ] if values.empty?
+        return [ associated_table.join_foreign_key => [values] ] if values.empty?
 
         type_to_ids_mapping.map do |type, ids|
           query = {}
@@ -45,13 +45,13 @@ module ActiveRecord
         def convert_to_id(value)
           case value
           when Base
-            value._read_attribute(primary_key(value))
+            primary_key(value).map { |primary_key_part| value._read_attribute(primary_key_part) }
           when Relation
             value.select(primary_key(value))
           else
-            value
+            [ value ]
           end
         end
-    end
+      end
   end
 end

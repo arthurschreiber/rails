@@ -64,6 +64,7 @@ module ActiveRecord
 
           primary_key.zip(foreign_key) do |primary_key_part, foreign_key_part|
             value = transform_value(owner[foreign_key_part])
+
             scope = apply_scope(scope, table, primary_key_part, value)
           end
 
