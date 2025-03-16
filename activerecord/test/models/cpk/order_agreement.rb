@@ -5,6 +5,7 @@ module Cpk
   class OrderAgreement < ActiveRecord::Base
     self.table_name = :cpk_order_agreements
 
-    belongs_to :order
+    # We only join order agreements thrugh `orders.id = order_agreements.order_id`
+    belongs_to :order, primary_key: :id
   end
 end

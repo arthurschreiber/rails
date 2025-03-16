@@ -572,14 +572,14 @@ module ActiveRecord
       def compute_primary_key(reflection, record)
         if primary_key_options = reflection.options[:primary_key]
           primary_key_options
-        elsif reflection.options[:query_constraints] && (query_constraints = record.class.query_constraints_list)
-          query_constraints
-        elsif record.class.has_query_constraints? && !reflection.options[:foreign_key]
-          record.class.query_constraints_list
-        elsif record.class.composite_primary_key?
-          # If record has composite primary key of shape [:<tenant_key>, :id], infer primary_key as :id
-          primary_key = record.class.primary_key
-          primary_key.include?("id") ? "id" : primary_key
+        # elsif reflection.options[:query_constraints] && (query_constraints = record.class.query_constraints_list)
+        #   query_constraints
+        # elsif record.class.has_query_constraints? && !reflection.options[:foreign_key]
+        #   record.class.query_constraints_list
+        # elsif record.class.composite_primary_key?
+        #   # If record has composite primary key of shape [:<tenant_key>, :id], infer primary_key as :id
+        #   primary_key = record.class.primary_key
+        #   primary_key.include?("id") ? "id" : primary_key
         else
           record.class.primary_key
         end

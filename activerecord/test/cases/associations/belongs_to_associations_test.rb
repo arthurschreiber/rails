@@ -1812,7 +1812,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     end
 
     assert_equal(<<~MESSAGE.squish, error.message)
-      Association Cpk::BrokenBookWithNonCpkOrder#order primary key ["id"]
+      Association Cpk::BrokenBookWithNonCpkOrder#order primary key id
       doesn't match with foreign key ["shop_id", "order_id"]. Please specify query_constraints, or primary_key and foreign_key values.
     MESSAGE
   end

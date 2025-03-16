@@ -159,7 +159,24 @@ module ActiveRecord
 
         # The name of the key on the associated records
         def association_key_name
-          reflection.join_primary_key(klass)
+          @association_key_name ||= begin
+            key_name = []
+
+            if reflection.query_constraints
+              reflection.query_constraints.each do |(left, right)|
+                key_name << left
+              end
+            end
+
+            primary_key = reflection.join_primary_key(klass)
+            if primary_key.is_a?(Array)
+              key_name.concat(primary_key)
+            else
+              key_name << primary_key
+            end
+
+            key_name.many? ? key_name : key_name.first
+          end
         end
 
         def loader_query
@@ -239,7 +256,25 @@ module ActiveRecord
 
           # The name of the key on the model which declares the association
           def owner_key_name
-            reflection.join_foreign_key
+            @owner_key_name ||= begin
+              key_name = []
+
+              if reflection.query_constraints
+                # TODO: is this the correct side of the constraints list?
+                reflection.query_constraints.each do |(left, right)|
+                  key_name << right
+                end
+              end
+
+              foreign_key = reflection.join_foreign_key
+              if foreign_key.is_a?(Array)
+                key_name.concat(foreign_key)
+              else
+                key_name << foreign_key
+              end
+
+              key_name.many? ? key_name : key_name.first
+            end
           end
 
           def associate_records_to_owner(owner, records)
@@ -255,6 +290,7 @@ module ActiveRecord
             end
           end
 
+          # TODO: Fix this for composite keys
           def key_conversion_required?
             unless defined?(@key_conversion_required)
               @key_conversion_required = (association_key_type != owner_key_type)
@@ -271,6 +307,7 @@ module ActiveRecord
             end
           end
 
+          # TODO: fix this for composite keys
           def convert_key(key)
             if key_conversion_required?
               key.to_s

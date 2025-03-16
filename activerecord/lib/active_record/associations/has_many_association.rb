@@ -34,21 +34,29 @@ module ActiveRecord
 
           unless target.empty?
             association_class = target.first.class
+
+            query_constraints = []
             if association_class.query_constraints_list
-              primary_key_column = association_class.query_constraints_list
-              ids = target.collect { |assoc| primary_key_column.map { |col| assoc.public_send(col) } }
-            else
-              primary_key_column = association_class.primary_key
-              ids = target.collect { |assoc| assoc.public_send(primary_key_column) }
+              query_constraints.concat association_class.query_constraints_list
             end
 
-            ids.each_slice(owner.class.destroy_association_async_batch_size || ids.size) do |ids_batch|
+            if association_class.composite_primary_key?
+              query_constraints.concat association_class.primary_key
+            else
+              query_constraints << association_class.primary_key
+            end
+
+            query_constraint_values = target.map do |assoc|
+              query_constraints.map { |col| assoc._read_attribute(col) }
+            end
+
+            query_constraint_values.each_slice(owner.class.destroy_association_async_batch_size || query_constraint_values.size) do |batch|
               enqueue_destroy_association(
                 owner_model_name: owner.class.to_s,
                 owner_id: owner.id,
                 association_class: reflection.klass.to_s,
-                association_ids: ids_batch,
-                association_primary_key_column: primary_key_column,
+                association_ids: batch,
+                association_primary_key_column: query_constraints,
                 ensuring_owner_was_method: options.fetch(:ensuring_owner_was, nil)
               )
             end
@@ -129,7 +137,18 @@ module ActiveRecord
             records.each(&:destroy!)
             update_counter(-records.length) unless reflection.inverse_updates_counter_cache?
           else
-            query_constraints = reflection.klass.composite_query_constraints_list
+            query_constraints = []
+
+            if reflection.klass.composite_primary_key?
+              query_constraints.concat(reflection.klass.primary_key)
+            else
+              query_constraints << reflection.klass.primary_key
+            end
+
+            if reflection.klass.query_constraints_list
+              query_constraints.concat(reflection.klass.query_constraints_list)
+            end
+
             values = records.map { |r| query_constraints.map { |col| r._read_attribute(col) } }
             scope = self.scope.where(query_constraints => values)
             update_counter(-delete_count(method, scope))

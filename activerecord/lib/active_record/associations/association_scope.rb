@@ -36,6 +36,10 @@ module ActiveRecord
         last_reflection = chain.last
 
         binds.push(*last_reflection.join_id_for(owner))
+        last_reflection.query_constraints.each do |(left_key, right_key)|
+          binds.push(owner._read_attribute(left_key))
+        end
+
         if last_reflection.type
           binds << owner.class.polymorphic_name
         end
@@ -66,6 +70,13 @@ module ActiveRecord
             scope = apply_scope(scope, table, join_key, value)
           end
 
+          # Add association level constraints
+          query_constraints = reflection.query_constraints
+          query_constraints.each do |(left_key, right_key)|
+            value = transform_value(owner._read_attribute(left_key))
+            scope = apply_scope(scope, table, right_key, value)
+          end
+
           if reflection.type
             polymorphic_type = transform_value(owner.class.polymorphic_name)
             scope = apply_scope(scope, table, reflection.type, polymorphic_type)
@@ -89,6 +100,12 @@ module ActiveRecord
           constraints = primary_key_foreign_key_pairs.map do |join_primary_key, foreign_key|
             table[join_primary_key].eq(foreign_table[foreign_key])
           end.inject(&:and)
+
+          # Add association level constraints
+          query_constraints = reflection.query_constraints
+          query_constraints.each do |(left_key, right_key)|
+            constraints = constraints.and(table[left_key].eq(foreign_table[right_key]))
+          end
 
           if reflection.type
             value = transform_value(next_reflection.klass.polymorphic_name)

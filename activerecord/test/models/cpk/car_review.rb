@@ -4,6 +4,6 @@ module Cpk
   class CarReview < ActiveRecord::Base
     self.table_name = :cpk_car_reviews
 
-    belongs_to :car, foreign_key: [:car_make, :car_model]
+    belongs_to :car, foreign_key: [:car_make, :car_model], inverse_of: :car_reviews
   end
 end

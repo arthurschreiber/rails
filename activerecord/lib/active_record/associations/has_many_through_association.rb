@@ -15,6 +15,7 @@ module ActiveRecord
         unless owner.new_record?
           records.flatten.each do |record|
             raise_on_type_mismatch!(record)
+            raise_on_constraints_mismatch!(record)
           end
         end
 
@@ -59,6 +60,11 @@ module ActiveRecord
 
             attributes = through_scope_attributes
             attributes[source_reflection.name] = record
+
+            # TODO: Not sure if we're looking at the right side of the association here.
+            source_reflection.query_constraints.each do |(left, right)|
+              attributes[left] = record._read_attribute(right)
+            end
 
             through_association.build(attributes).tap do |new_record|
               new_record.send("#{source_reflection.foreign_type}=", options[:source_type]) if options[:source_type]

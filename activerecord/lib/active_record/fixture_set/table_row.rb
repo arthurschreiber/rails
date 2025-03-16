@@ -160,6 +160,13 @@ module ActiveRecord
                     @row[association.join_foreign_type] = $1
                   end
                 elsif association.join_primary_key != association.klass.primary_key
+                  # puts "Debug: "
+                  # pp association
+                  # pp association.join_primary_key
+                  # pp association.klass
+                  # pp association.klass.primary_key
+                  # puts "==="
+
                   raise PrimaryKeyError.new(@label, association, value)
                 end
 

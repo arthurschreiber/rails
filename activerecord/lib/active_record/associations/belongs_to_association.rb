@@ -95,6 +95,7 @@ module ActiveRecord
         def replace(record)
           if record
             raise_on_type_mismatch!(record)
+            raise_on_constraints_mismatch!(record)
             set_inverse_instance(record)
             @updated = true
           elsif target
@@ -111,13 +112,14 @@ module ActiveRecord
             if target && !stale_target?
               target.increment!(reflection.counter_cache_column, by, touch: reflection.options[:touch])
             else
-              update_counters_via_scope(klass, owner._read_attribute(reflection.foreign_key), by)
+              # TODO: This update needs to include query constraints
+              update_counters_via_scope(klass, Array(reflection.foreign_key).map { |key| owner._read_attribute(key) }, by)
             end
           end
         end
 
         def update_counters_via_scope(klass, foreign_key, by)
-          scope = klass.unscoped.where!(primary_key(klass) => foreign_key)
+          scope = klass.unscoped.where!(primary_key(klass) => primary_key(klass).is_a?(Array) ? [foreign_key] : foreign_key)
           scope.update_counters(reflection.counter_cache_column => by, touch: reflection.options[:touch])
         end
 
