@@ -1652,14 +1652,14 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
     quoted_tags_blog_id = Regexp.escape(quote_table_name("sharded_tags.blog_id"))
     quoted_posts_tags_blog_id = Regexp.escape(quote_table_name("sharded_blog_posts_tags.blog_id"))
-    assert_match(/.* ON.* #{quoted_tags_blog_id} = #{quoted_posts_tags_blog_id} .* WHERE/, sql)
-    assert_match(/.* WHERE #{quoted_posts_tags_blog_id} = .*/, sql)
+    assert_match(/.* ON.* #{quoted_tags_blog_id} = #{quoted_posts_tags_blog_id} .*WHERE/, sql)
+    assert_match(/.* WHERE.* #{quoted_posts_tags_blog_id} = .*/, sql)
 
     assert_not_empty(tag_ids)
     assert_equal(expected_tag_ids.sort, tag_ids.sort)
   end
 
-  def test_tags_has_manu_posts_through_association_with_composite_query_constraints
+  def test_tags_has_many_posts_through_association_with_composite_query_constraints
     tag = sharded_tags(:short_read_blog_one)
     expected_blog_post_ids = Sharded::BlogPostTag.where(tag_id: tag.id, blog_id: tag.blog_id).pluck(:blog_post_id)
     blog_post_ids = []
@@ -1669,8 +1669,8 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
     quoted_blog_posts_blog_id = Regexp.escape(quote_table_name("sharded_blog_posts.blog_id"))
     quoted_posts_tags_blog_id = Regexp.escape(quote_table_name("sharded_blog_posts_tags.blog_id"))
-    assert_match(/.* ON.* #{quoted_blog_posts_blog_id} = #{quoted_posts_tags_blog_id} .* WHERE/, sql)
-    assert_match(/.* WHERE #{quoted_posts_tags_blog_id} = .*/, sql)
+    assert_match(/.* ON.* #{quoted_blog_posts_blog_id} = #{quoted_posts_tags_blog_id} .*WHERE/, sql)
+    assert_match(/.* WHERE.* #{quoted_posts_tags_blog_id} = .*/, sql)
 
     assert_not_empty(blog_post_ids)
     assert_equal(expected_blog_post_ids.sort, blog_post_ids.sort)

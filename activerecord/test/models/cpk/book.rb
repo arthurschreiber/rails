@@ -5,11 +5,14 @@ module Cpk
     attr_accessor :fail_destroy
 
     self.table_name = :cpk_books
-    belongs_to :order, autosave: true, foreign_key: [:shop_id, :order_id], counter_cache: true
+    belongs_to :order, autosave: true,
+      foreign_key: [:shop_id, :order_id],
+      primary_key: [:shop_id, :id],
+      counter_cache: true
     belongs_to :order_explicit_fk_pk, class_name: "Cpk::Order", foreign_key: [:shop_id, :order_id], primary_key: [:shop_id, :id]
     belongs_to :author, class_name: "Cpk::Author"
 
-    has_many :chapters, foreign_key: [:author_id, :book_id]
+    has_many :chapters, foreign_key: [:author_id, :book_id], inverse_of: :book
     accepts_nested_attributes_for :chapters
 
     before_destroy :prevent_destroy_if_set

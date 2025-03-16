@@ -526,17 +526,18 @@ module ActiveRecord
         @foreign_key = nil
         @association_foreign_key = nil
         @association_primary_key = nil
-        if options[:query_constraints]
-          raise ConfigurationError, <<~MSG.squish
-            Setting `query_constraints:` option on `#{active_record}.#{macro} :#{name}` is not allowed.
-            To get the same behavior, use the `foreign_key` option instead.
-          MSG
-        end
+
+        # if options[:query_constraints]
+        #   raise ConfigurationError, <<~MSG.squish
+        #     Setting `query_constraints:` option on `#{active_record}.#{macro} :#{name}` is not allowed.
+        #     To get the same behavior, use the `foreign_key` option instead.
+        #   MSG
+        # end
 
         # If the foreign key is an array, set query constraints options and don't use the foreign key
-        if options[:foreign_key].is_a?(Array)
-          options[:query_constraints] = options.delete(:foreign_key)
-        end
+        # if options[:foreign_key].is_a?(Array)
+        #   options[:query_constraints] = options.delete(:foreign_key)
+        # end
 
         ensure_option_not_given_as_class!(:class_name)
       end
@@ -562,14 +563,14 @@ module ActiveRecord
           else
             options[:foreign_key].to_s.freeze
           end
-        elsif options[:query_constraints]
-          options[:query_constraints].map { |fk| -fk.to_s.freeze }.freeze
+        # elsif options[:query_constraints]
+        #   options[:query_constraints].map { |fk| -fk.to_s.freeze }.freeze
         else
           derived_fk = derive_foreign_key(infer_from_inverse_of: infer_from_inverse_of)
 
-          if active_record.has_query_constraints?
-            derived_fk = derive_fk_query_constraints(derived_fk)
-          end
+          # if active_record.has_query_constraints?
+          #   derived_fk = derive_fk_query_constraints(derived_fk)
+          # end
 
           if derived_fk.is_a?(Array)
             derived_fk.map! { |fk| -fk.freeze }
@@ -596,12 +597,12 @@ module ActiveRecord
           else
             custom_primary_key.to_s.freeze
           end
-        elsif active_record.has_query_constraints? || options[:query_constraints]
-          active_record.query_constraints_list
-        elsif active_record.composite_primary_key?
-          # If active_record has composite primary key of shape [:<tenant_key>, :id], infer primary_key as :id
-          primary_key = primary_key(active_record)
-          primary_key.include?("id") ? "id" : primary_key.freeze
+        # elsif active_record.has_query_constraints? || options[:query_constraints]
+        #   active_record.query_constraints_list
+        # elsif active_record.composite_primary_key?
+        #   # If active_record has composite primary key of shape [:<tenant_key>, :id], infer primary_key as :id
+        #   primary_key = primary_key(active_record)
+        #   primary_key.include?("id") ? "id" : primary_key.freeze
         else
           primary_key(active_record).freeze
         end
@@ -617,6 +618,20 @@ module ActiveRecord
 
       def join_foreign_key
         active_record_primary_key
+      end
+
+      def query_constraints
+        @query_constraints ||= if options[:query_constraints]
+          if options[:query_constraints].is_a? Array
+            options[:query_constraints].map { |fk| [-fk.to_s.freeze, -fk.to_s.freeze] }
+          elsif options[:query_constraints].is_a? Hash
+            options[:query_constraints].map { |(left, right)| [-left.to_s.freeze, -right.to_s.freeze] }
+          else
+            [[options[:query_constraints].to_s.freeze, options[:query_constraints].to_s.freeze]]
+          end
+        else
+          [].freeze
+        end
       end
 
       def check_validity!
@@ -840,45 +855,45 @@ module ActiveRecord
           end
         end
 
-        def derive_fk_query_constraints(foreign_key)
-          primary_query_constraints = active_record.query_constraints_list
-          owner_pk = active_record.primary_key
+        # def derive_fk_query_constraints(foreign_key)
+        #   primary_query_constraints = active_record.query_constraints_list
+        #   owner_pk = active_record.primary_key
 
-          if primary_query_constraints.size > 2
-            raise ArgumentError, <<~MSG.squish
-              The query constraints list on the `#{active_record}` model has more than 2
-              attributes. Active Record is unable to derive the query constraints
-              for the association. You need to explicitly define the query constraints
-              for this association.
-            MSG
-          end
+        #   if primary_query_constraints.size > 2
+        #     raise ArgumentError, <<~MSG.squish
+        #       The query constraints list on the `#{active_record}` model has more than 2
+        #       attributes. Active Record is unable to derive the query constraints
+        #       for the association. You need to explicitly define the query constraints
+        #       for this association.
+        #     MSG
+        #   end
 
-          if !primary_query_constraints.include?(owner_pk)
-            raise ArgumentError, <<~MSG.squish
-              The query constraints on the `#{active_record}` model does not include the primary
-              key so Active Record is unable to derive the foreign key constraints for
-              the association. You need to explicitly define the query constraints for this
-              association.
-            MSG
-          end
+        #   if !primary_query_constraints.include?(owner_pk)
+        #     raise ArgumentError, <<~MSG.squish
+        #       The query constraints on the `#{active_record}` model does not include the primary
+        #       key so Active Record is unable to derive the foreign key constraints for
+        #       the association. You need to explicitly define the query constraints for this
+        #       association.
+        #     MSG
+        #   end
 
-          return foreign_key if primary_query_constraints.include?(foreign_key)
+        #   return foreign_key if primary_query_constraints.include?(foreign_key)
 
-          first_key, last_key = primary_query_constraints
+        #   first_key, last_key = primary_query_constraints
 
-          if first_key == owner_pk
-            [foreign_key, last_key.to_s]
-          elsif last_key == owner_pk
-            [first_key.to_s, foreign_key]
-          else
-            raise ArgumentError, <<~MSG.squish
-              Active Record couldn't correctly interpret the query constraints
-              for the `#{active_record}` model. The query constraints on `#{active_record}` are
-              `#{primary_query_constraints}` and the foreign key is `#{foreign_key}`.
-              You need to explicitly set the query constraints for this association.
-            MSG
-          end
-        end
+        #   if first_key == owner_pk
+        #     [foreign_key, last_key.to_s]
+        #   elsif last_key == owner_pk
+        #     [first_key.to_s, foreign_key]
+        #   else
+        #     raise ArgumentError, <<~MSG.squish
+        #       Active Record couldn't correctly interpret the query constraints
+        #       for the `#{active_record}` model. The query constraints on `#{active_record}` are
+        #       `#{primary_query_constraints}` and the foreign key is `#{foreign_key}`.
+        #       You need to explicitly set the query constraints for this association.
+        #     MSG
+        #   end
+        # end
 
         def derive_join_table
           ModelSchema.derive_join_table_name active_record.table_name, klass.table_name
@@ -934,12 +949,12 @@ module ActiveRecord
           else
             -primary_key.to_s
           end
-        elsif (klass || self.klass).has_query_constraints? || options[:query_constraints]
-          (klass || self.klass).composite_query_constraints_list
-        elsif (klass || self.klass).composite_primary_key?
-          # If klass has composite primary key of shape [:<tenant_key>, :id], infer primary_key as :id
-          primary_key = (klass || self.klass).primary_key
-          primary_key.include?("id") ? "id" : primary_key
+        # elsif (klass || self.klass).has_query_constraints? || options[:query_constraints]
+        #   (klass || self.klass).composite_query_constraints_list
+        # elsif (klass || self.klass).composite_primary_key?
+        #   # If klass has composite primary key of shape [:<tenant_key>, :id], infer primary_key as :id
+        #   primary_key = (klass || self.klass).primary_key
+        #   primary_key.include?("id") ? "id" : primary_key
         else
           primary_key(klass || self.klass)
         end
@@ -1230,7 +1245,7 @@ module ActiveRecord
     end
 
     class PolymorphicReflection < AbstractReflection # :nodoc:
-      delegate :klass, :scope, :plural_name, :type, :join_primary_key, :join_foreign_key,
+      delegate :klass, :scope, :plural_name, :type, :join_primary_key, :join_foreign_key, :query_constraints,
                :name, :scope_for, to: :@reflection
 
       def initialize(reflection, previous_reflection)
@@ -1260,7 +1275,7 @@ module ActiveRecord
     end
 
     class RuntimeReflection < AbstractReflection # :nodoc:
-      delegate :scope, :type, :constraints, :join_foreign_key, to: :@reflection
+      delegate :scope, :type, :constraints, :join_foreign_key, :query_constraints, to: :@reflection
 
       def initialize(reflection, association)
         super()

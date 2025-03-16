@@ -221,19 +221,17 @@ module ActiveRecord
       end
 
       def query_constraints_list # :nodoc:
-        @query_constraints_list ||= if base_class? || primary_key != base_class.primary_key
-          primary_key if primary_key.is_a?(Array)
-        else
-          base_class.query_constraints_list
-        end
+        return @query_constraints_list if defined? @query_constraints_list
+
+        @query_constraints_list = base_class.query_constraints_list unless base_class?
       end
 
       # Returns an array of column names to be used in queries. The source of column
       # names is derived from +query_constraints_list+ or +primary_key+. This method
       # is for internal use when the primary key is to be treated as an array.
-      def composite_query_constraints_list # :nodoc:
-        @composite_query_constraints_list ||= query_constraints_list || Array(primary_key)
-      end
+      # def composite_query_constraints_list # :nodoc:
+      #   @composite_query_constraints_list ||= query_constraints_list || Array(primary_key)
+      # end
 
       def _insert_record(connection, values, returning) # :nodoc:
         primary_key = self.primary_key
@@ -843,13 +841,23 @@ module ActiveRecord
       end
 
       def _in_memory_query_constraints_hash
-        if self.class.query_constraints_list.nil?
-          { @primary_key => id }
-        else
-          self.class.query_constraints_list.index_with do |column_name|
-            attribute(column_name)
+        hash = {}
+
+        if self.class.query_constraints_list
+          self.class.query_constraints_list.each do |column_name|
+            hash[column_name] = attribute(column_name)
           end
         end
+
+        if self.class.composite_primary_key?
+          @primary_key.zip(id).each do |key, value|
+            hash[key] = value
+          end
+        else
+          hash[@primary_key] = id
+        end
+
+        hash
       end
 
       def apply_scoping?(options)
@@ -858,13 +866,23 @@ module ActiveRecord
       end
 
       def _query_constraints_hash
-        if self.class.query_constraints_list.nil?
-          { @primary_key => id_in_database }
-        else
-          self.class.query_constraints_list.index_with do |column_name|
-            attribute_in_database(column_name)
+        hash = {}
+
+        if self.class.query_constraints_list
+          self.class.query_constraints_list.each do |column_name|
+            hash[column_name] = attribute_in_database(column_name)
           end
         end
+
+        if self.class.composite_primary_key?
+          @primary_key.zip(id_in_database).each do |key, value|
+            hash[key] = value
+          end
+        else
+          hash[@primary_key] = id_in_database
+        end
+
+        hash
       end
 
       # A hook to be overridden by association modules.

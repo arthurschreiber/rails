@@ -58,6 +58,7 @@ module ActiveRecord
       private
         def replace(record, save = true)
           raise_on_type_mismatch!(record) if record
+          raise_on_constraints_mismatch!(record) if record
 
           return target unless load_target || record
 

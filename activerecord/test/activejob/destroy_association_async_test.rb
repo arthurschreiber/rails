@@ -135,8 +135,8 @@ class DestroyAssociationAsyncTest < ActiveRecord::TestCase
     book.tags << [tag, tag2]
     book.save!
 
-    job_1_args = ->(job_args) { job_args.first[:association_ids] == [tag.id] }
-    job_2_args = ->(job_args) { job_args.first[:association_ids] == [tag2.id] }
+    job_1_args = ->(job_args) { job_args.first[:association_primary_key_column] == ["id"] && job_args.first[:association_ids] == [[tag.id]] }
+    job_2_args = ->(job_args) { job_args.first[:association_primary_key_column] == ["id"] && job_args.first[:association_ids] == [[tag2.id]] }
 
     assert_enqueued_with(job: ActiveRecord::DestroyAssociationAsyncJob, args: job_1_args) do
       assert_enqueued_with(job: ActiveRecord::DestroyAssociationAsyncJob, args: job_2_args) do
@@ -171,7 +171,7 @@ class DestroyAssociationAsyncTest < ActiveRecord::TestCase
   test "belongs to associated by composite primary key" do
     blog = Sharded::Blog.create!
     blog_post = Sharded::BlogPostDestroyAsync.create!(blog_id: blog.id)
-    comment = Sharded::CommentDestroyAsync.create!(body: "Great post! :clap:")
+    comment = Sharded::CommentDestroyAsync.create!(body: "Great post! :clap:", blog_id: blog.id)
 
     comment.blog_post = blog_post
     comment.save!

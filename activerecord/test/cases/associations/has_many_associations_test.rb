@@ -1318,8 +1318,8 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     blog_id = Regexp.escape(quote_table_name("sharded_comments.blog_id"))
     id = Regexp.escape(quote_table_name("sharded_comments.id"))
 
-    query_constraints = /#{blog_id} = .* AND #{id} = .*/
-    expectation = /DELETE.*WHERE.* \(#{query_constraints} OR #{query_constraints}\)/
+    query_constraints = /#{id} = .* AND #{blog_id} = .*/
+    expectation = /DELETE .* WHERE.* \(#{query_constraints} OR #{query_constraints}\)/
 
     assert_match(expectation, sql.second)
 

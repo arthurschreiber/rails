@@ -59,7 +59,7 @@ module ActiveRecord
 
           association_primary_key = source_reflection.association_primary_key(reflection.klass)
 
-          if Array(association_primary_key) == reflection.klass.composite_query_constraints_list && !options[:source_type]
+          if association_primary_key == reflection.klass.primary_key && !options[:source_type]
             join_attributes = { source_reflection.name => records }
           else
             assoc_pk_values = records.map { |record| record._read_attribute(association_primary_key) }

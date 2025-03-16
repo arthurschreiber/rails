@@ -440,6 +440,8 @@ module ActiveRecord
 
           records.each do |record|
             raise_on_type_mismatch!(record)
+            raise_on_constraints_mismatch!(record)
+
             add_to_target(record) do
               unless owner.new_record?
                 result &&= insert_record(record, true, raise) {

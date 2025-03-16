@@ -347,6 +347,17 @@ module ActiveRecord
           end
         end
 
+        # Raises an ArgumentError +record+ matches the query constraints
+        # set on the association
+        def raise_on_constraints_mismatch!(record)
+          matching_constraints = reflection.query_constraints.all? do |(left, right)|
+            owner._read_attribute(left) == record._read_attribute(right)
+          end
+
+          return if matching_constraints
+          raise ArgumentError, "query constraints don't match"
+        end
+
         def inverse_association_for(record)
           if invertible_for?(record)
             record.association(inverse_reflection_for(record).name)
