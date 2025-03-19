@@ -277,6 +277,15 @@ class AssociationsTest < ActiveRecord::TestCase
     assert_match(/#{Regexp.escape(quote_table_name("sharded_comments.blog_id"))} =/, sql)
   end
 
+  def test_has_many_with_query_constraints_build_record_fills_constraint_columns
+    blog_post = sharded_blog_posts(:great_post_blog_one)
+
+    comment = blog_post.comments.build
+
+    assert_equal blog_post.id, comment.blog_post_id
+    assert_equal blog_post.blog_id, comment.blog_id
+  end
+
   def test_belongs_to_association_does_not_use_parent_query_constraints_if_not_configured_to
     comment = sharded_comments(:great_comment_blog_post_one)
     blog_post = Sharded::BlogPost.new(blog_id: comment.blog_id, title: "Following best practices")
