@@ -351,7 +351,10 @@ module ActiveRecord
         # set on the association
         def raise_on_constraints_mismatch!(record)
           matching_constraints = reflection.query_constraints.all? do |(left, right)|
-            owner._read_attribute(left) == record._read_attribute(right)
+            left_value = owner._read_attribute(left)
+            right_value = record._read_attribute(right)
+
+            left_value == right_value || (record.new_record? && right_value.nil?)
           end
 
           return if matching_constraints
