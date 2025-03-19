@@ -211,6 +211,13 @@ module ActiveRecord
         primary_key_column_names = Array(join_primary_key)
         foreign_key_column_names = Array(join_foreign_key)
 
+        if query_constraints
+          query_constraints.each do |(left, right)|
+            primary_key_column_names << left
+            foreign_key_column_names << right
+          end
+        end
+
         primary_foreign_key_pairs = primary_key_column_names.zip(foreign_key_column_names)
 
         primary_foreign_key_pairs.each do |primary_key_column_name, foreign_key_column_name|
